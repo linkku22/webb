@@ -49,22 +49,33 @@
 
       let domain = input.replace(/^https?:\/\//, '').split('/')[0];
 
+      // Menggunakan CORS Proxy untuk mengatasi error "Failed to fetch"
+      const proxy = "https://corsproxy.io/?";
+      const apiURL = `${baseURL}/check?domain=${encodeURIComponent(domain)}&token=${apiToken}`;
+
       try {
-        const res = await fetch(`${baseURL}/check?domain=${domain}&token=${apiToken}`);
+        const res = await fetch(proxy + encodeURIComponent(apiURL));
         
-        if (!res.ok) throw new Error('Gagal menghubungi server');
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
 
         const data = await res.json();
+
+        if (data.error) {
+          throw new Error(data.error);
+        }
 
         showResult(data);
 
       } catch (err) {
+        console.error(err);
         document.getElementById('result').innerHTML = `
           <div class="text-red-400 text-center">
             <i class="fas fa-exclamation-triangle text-5xl mb-4"></i>
             <p class="font-medium">Gagal melakukan pengecekan</p>
             <p class="text-sm mt-2">${err.message}</p>
-            <p class="text-xs mt-6 text-zinc-500">Solusi: Upload file ini ke hosting (tiiny.host / netlify)</p>
+            <p class="text-xs mt-4 text-zinc-500">Coba refresh halaman atau gunakan domain lain</p>
           </div>`;
         document.getElementById('result').classList.remove('hidden');
       } finally {
