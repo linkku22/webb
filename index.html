@@ -95,7 +95,11 @@ let domains = [
     "gobetasia-rtp.live"
 ];
 
-let dataTable;   // Simpan instance DataTable
+let dataTable;
+
+function normalizeDomain(domain) {
+    return domain.trim().toLowerCase();
+}
 
 function renderTable() {
     let html = '';
@@ -134,7 +138,6 @@ async function cekSemuaDomain() {
         const domain = domains[i];
         const cells = rows[i].cells;
 
-        // Tampilkan CHECKING...
         for (let j = 2; j < cells.length; j++) {
             cells[j].innerHTML = "CHECKING...";
             cells[j].className = "status-waiting";
@@ -166,7 +169,6 @@ async function cekSemuaDomain() {
             }
 
         } catch (err) {
-            console.error(err);
             for (let j = 2; j < cells.length; j++) {
                 cells[j].innerHTML = "ERROR";
                 cells[j].className = "status-error";
@@ -177,29 +179,25 @@ async function cekSemuaDomain() {
 
 function tambahDomain() {
     const input = document.getElementById('newDomain');
-    const val = input.value.trim().toLowerCase();
+    let val = normalizeDomain(input.value);
 
     if (!val) {
         alert("❌ Masukkan domain dulu!");
         return;
     }
-    if (domains.includes(val)) {
+
+    // Cek apakah sudah ada (dengan normalize)
+    const exists = domains.some(d => normalizeDomain(d) === val);
+    if (exists) {
         alert("❌ Domain ini sudah ada!");
         return;
     }
 
-    // Tambahkan domain ke array
     domains.push(val);
-
-    // Render ulang tabel
     renderTable();
-
-    // Refresh DataTable
     initDataTable();
 
-    // Kosongkan input
     input.value = '';
-
     alert(`✅ Domain "${val}" berhasil ditambahkan!`);
 }
 
