@@ -8,16 +8,17 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/1.10.20/css/jquery.dataTables.min.css">
    
     <style>
-        body { background: #f8f9fa; }
+        body { background: #f8f9fa; font-family: Arial, sans-serif; }
         .blink-dot { animation: blink 1.2s infinite; color: #28a745; font-size: 18px; }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
         
+        .status-waiting { color: #ffc107; font-weight: bold; }
         .status-aman { color: #28a745; font-weight: bold; background: #d4edda; }
         .status-blocked { color: #dc3545; font-weight: bold; background: #f8d7da; }
-        .status-waiting { color: orange; font-weight: bold; }
+        .status-error { color: #dc3545; font-weight: bold; background: #f8d7da; }
 
         .table thead th { background: #007bff; color: white; text-align: center; }
-        .table td { text-align: center; vertical-align: middle; padding: 12px; }
+        .table td { text-align: center; vertical-align: middle; padding: 14px; }
         .domain-link { color: #007bff; text-decoration: none; }
         .domain-link:hover { text-decoration: underline; }
 
@@ -32,8 +33,9 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
+            box-shadow: 0 3px 10px rgba(40,167,69,0.4);
         }
-        .add-chip:hover { background: #218838; }
+        .add-chip:hover { background: #218838; transform: translateY(-2px); }
     </style>
 </head>
 <body>
@@ -67,7 +69,8 @@
     
     <div class="row mb-4 align-items-center">
         <div class="col-md-8">
-            <input type="text" id="newDomain" class="form-control form-control-lg" placeholder="Masukkan domain baru (contoh: gobetasia-rtp.xyz)">
+            <input type="text" id="newDomain" class="form-control form-control-lg" 
+                   placeholder="Masukkan domain baru (contoh: gobetasia-rtp.xyz)">
         </div>
         <div class="col-md-4">
             <div onclick="tambahDomain()" class="add-chip">
@@ -104,7 +107,7 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.10.20/js/jquery.dataTables.min.js"></script>
 <script>
-const TOKEN = "9863f19e46b1d9137dd8c6d2c78ebf67";
+const TOKEN = "9863f19e46b1d9137dd8c6d2c78ebf67";   // GANTI DENGAN TOKEN BARU KALAU SUDAH BELI
 
 let domains = [
     "gobetasia-rtp.site",
@@ -113,6 +116,10 @@ let domains = [
 ];
 
 let dataTable;
+
+function normalizeDomain(d) {
+    return d.trim().toLowerCase();
+}
 
 function renderTable() {
     let html = '';
@@ -138,17 +145,11 @@ function initDataTable() {
     dataTable = $('#domainTable').DataTable({ pageLength: 50, destroy: true });
 }
 
-// Fungsi simulasi hasil berbeda per ISP (karena API gratis sulit)
-function getRandomStatus() {
-    const rand = Math.random();
-    if (rand < 0.7) return { text: "AMAN", class: "status-aman" };
-    else return { text: "BLOCKED", class: "status-blocked" };
-}
-
 async function cekSemuaDomain() {
     const rows = document.getElementById('domainBody').rows;
     
     for (let i = 0; i < rows.length; i++) {
+        const domain = domains[i];
         const cells = rows[i].cells;
 
         for (let j = 2; j < cells.length; j++) {
@@ -156,30 +157,57 @@ async function cekSemuaDomain() {
             cells[j].className = "status-waiting";
         }
 
-        // Simulasi delay + hasil berbeda per ISP
-        await new Promise(r => setTimeout(r, 800));
+        try {
+            const apiURL = `https://indiwtf.com/api/check?domain=${encodeURIComponent(domain)}&token=${TOKEN}`;
+            const proxyURL = `https://api.allorigins.win/raw?url=${encodeURIComponent(apiURL)}`;
+            
+            const res = await fetch(proxyURL);
+            const text = await res.text();
+            const data = JSON.parse(text);
 
-        for (let j = 2; j < cells.length; j++) {
-            const status = getRandomStatus();
-            cells[j].innerHTML = status.text;
-            cells[j].className = status.class;
+            let statusText = "ERROR";
+            let statusClass = "status-error";
+
+            if (data.status === "allowed") {
+                statusText = "AMAN";
+                statusClass = "status-aman";
+            } else if (data.status === "blocked") {
+                statusText = "BLOCKED";
+                statusClass = "status-blocked";
+            } else if (data.error) {
+                statusText = "ERROR: " + data.error;
+                if (data.error.toLowerCase().includes("token")) statusText = "TOKEN INVALID / EXPIRED";
+            }
+
+            // Isi SEMUA kolom ISP dengan hasil yang sama (paling akurat saat ini)
+            for (let j = 2; j < cells.length; j++) {
+                cells[j].innerHTML = statusText;
+                cells[j].className = statusClass;
+            }
+
+        } catch (err) {
+            console.error(err);
+            for (let j = 2; j < cells.length; j++) {
+                cells[j].innerHTML = "ERROR KONEKSI<br><small>Cek token atau koneksi</small>";
+                cells[j].className = "status-error";
+            }
         }
     }
 }
 
 function tambahDomain() {
     const input = document.getElementById('newDomain');
-    let val = input.value.trim().toLowerCase();
+    let val = normalizeDomain(input.value);
 
-    if (!val) return alert("Masukkan domain dulu!");
-    if (domains.includes(val)) return alert("Domain ini sudah ada!");
+    if (!val) return alert("❌ Masukkan domain dulu!");
+    if (domains.some(d => normalizeDomain(d) === val)) return alert("❌ Domain ini sudah ada!");
 
     domains.push(val);
     renderTable();
     initDataTable();
 
     input.value = '';
-    alert(`Domain "${val}" berhasil ditambahkan!`);
+    alert(`✅ Domain "${val}" berhasil ditambahkan!`);
 }
 
 $(document).ready(function() {
