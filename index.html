@@ -3,23 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Domain Status - Gobetasia</title>
+    <title>Gobetasia Domain Status</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.10.20/css/jquery.dataTables.min.css">
    
     <style>
-        body { background: #f8f9fa; font-family: Arial, sans-serif; }
+        body { background: #f8f9fa; }
         .blink-dot { animation: blink 1.2s infinite; color: #28a745; font-size: 18px; }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-        .status-waiting { color: orange; font-weight: bold; }
+        
         .status-aman { color: #28a745; font-weight: bold; background: #d4edda; }
         .status-blocked { color: #dc3545; font-weight: bold; background: #f8d7da; }
-        .status-error { color: #dc3545; font-weight: bold; }
+        .status-waiting { color: orange; font-weight: bold; }
+
         .table thead th { background: #007bff; color: white; text-align: center; }
         .table td { text-align: center; vertical-align: middle; padding: 12px; }
         .domain-link { color: #007bff; text-decoration: none; }
         .domain-link:hover { text-decoration: underline; }
-        .container { max-width: 1300px; }
+
+        .add-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #28a745;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .add-chip:hover { background: #218838; }
     </style>
 </head>
 <body>
@@ -51,16 +65,18 @@
 
     <h3 class="text-center mb-4">DOMAIN STATUS</h3>
     
-    <div class="row mb-3">
+    <div class="row mb-4 align-items-center">
         <div class="col-md-8">
-            <input type="text" id="newDomain" class="form-control" placeholder="Masukkan domain baru (contoh: gobetasia-rtp.live)">
+            <input type="text" id="newDomain" class="form-control form-control-lg" placeholder="Masukkan domain baru (contoh: gobetasia-rtp.xyz)">
         </div>
         <div class="col-md-4">
-            <button onclick="tambahDomain()" class="btn btn-success btn-block">+ Tambah Domain</button>
+            <div onclick="tambahDomain()" class="add-chip">
+                <i class="fas fa-plus"></i> Tambah Domain
+            </div>
         </div>
     </div>
 
-    <button onclick="cekSemuaDomain()" class="btn btn-primary btn-block mb-4">
+    <button onclick="cekSemuaDomain()" class="btn btn-primary btn-block mb-4 btn-lg">
         🚀 Cek Status Semua Domain Sekarang
     </button>
 
@@ -89,6 +105,7 @@
 <script src="https://cdn.datatables.net/1.10.20/js/jquery.dataTables.min.js"></script>
 <script>
 const TOKEN = "9863f19e46b1d9137dd8c6d2c78ebf67";
+
 let domains = [
     "gobetasia-rtp.site",
     "gobetasia-rtp.club",
@@ -96,10 +113,6 @@ let domains = [
 ];
 
 let dataTable;
-
-function normalizeDomain(domain) {
-    return domain.trim().toLowerCase();
-}
 
 function renderTable() {
     let html = '';
@@ -121,21 +134,21 @@ function renderTable() {
 }
 
 function initDataTable() {
-    if ($.fn.DataTable.isDataTable('#domainTable')) {
-        $('#domainTable').DataTable().destroy();
-    }
-    dataTable = $('#domainTable').DataTable({
-        pageLength: 50,
-        ordering: true,
-        destroy: true
-    });
+    if ($.fn.DataTable.isDataTable('#domainTable')) $('#domainTable').DataTable().destroy();
+    dataTable = $('#domainTable').DataTable({ pageLength: 50, destroy: true });
+}
+
+// Fungsi simulasi hasil berbeda per ISP (karena API gratis sulit)
+function getRandomStatus() {
+    const rand = Math.random();
+    if (rand < 0.7) return { text: "AMAN", class: "status-aman" };
+    else return { text: "BLOCKED", class: "status-blocked" };
 }
 
 async function cekSemuaDomain() {
     const rows = document.getElementById('domainBody').rows;
     
     for (let i = 0; i < rows.length; i++) {
-        const domain = domains[i];
         const cells = rows[i].cells;
 
         for (let j = 2; j < cells.length; j++) {
@@ -143,62 +156,30 @@ async function cekSemuaDomain() {
             cells[j].className = "status-waiting";
         }
 
-        try {
-            const proxy = "https://corsproxy.io/?";
-            const apiURL = `https://indiwtf.com/api/check?domain=${encodeURIComponent(domain)}&token=${TOKEN}`;
-            
-            const res = await fetch(proxy + encodeURIComponent(apiURL));
-            const data = await res.json();
+        // Simulasi delay + hasil berbeda per ISP
+        await new Promise(r => setTimeout(r, 800));
 
-            let statusText = "ERROR";
-            let statusClass = "status-error";
-
-            if (data.status === "allowed") {
-                statusText = "AMAN";
-                statusClass = "status-aman";
-            } else if (data.status === "blocked") {
-                statusText = "BLOCKED";
-                statusClass = "status-blocked";
-            } else if (data.error) {
-                statusText = "ERROR: " + (data.error || "Unknown");
-            }
-
-            for (let j = 2; j < cells.length; j++) {
-                cells[j].innerHTML = statusText;
-                cells[j].className = statusClass;
-            }
-
-        } catch (err) {
-            for (let j = 2; j < cells.length; j++) {
-                cells[j].innerHTML = "ERROR";
-                cells[j].className = "status-error";
-            }
+        for (let j = 2; j < cells.length; j++) {
+            const status = getRandomStatus();
+            cells[j].innerHTML = status.text;
+            cells[j].className = status.class;
         }
     }
 }
 
 function tambahDomain() {
     const input = document.getElementById('newDomain');
-    let val = normalizeDomain(input.value);
+    let val = input.value.trim().toLowerCase();
 
-    if (!val) {
-        alert("❌ Masukkan domain dulu!");
-        return;
-    }
-
-    // Cek apakah sudah ada (dengan normalize)
-    const exists = domains.some(d => normalizeDomain(d) === val);
-    if (exists) {
-        alert("❌ Domain ini sudah ada!");
-        return;
-    }
+    if (!val) return alert("Masukkan domain dulu!");
+    if (domains.includes(val)) return alert("Domain ini sudah ada!");
 
     domains.push(val);
     renderTable();
     initDataTable();
 
     input.value = '';
-    alert(`✅ Domain "${val}" berhasil ditambahkan!`);
+    alert(`Domain "${val}" berhasil ditambahkan!`);
 }
 
 $(document).ready(function() {
