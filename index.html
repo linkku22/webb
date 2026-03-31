@@ -95,7 +95,7 @@ let domains = [
     "gobetasia-rtp.live"
 ];
 
-let table;   // Simpan instance DataTable
+let dataTable;   // Simpan instance DataTable
 
 function renderTable() {
     let html = '';
@@ -117,8 +117,10 @@ function renderTable() {
 }
 
 function initDataTable() {
-    if (table) table.destroy();
-    table = $('#domainTable').DataTable({
+    if ($.fn.DataTable.isDataTable('#domainTable')) {
+        $('#domainTable').DataTable().destroy();
+    }
+    dataTable = $('#domainTable').DataTable({
         pageLength: 50,
         ordering: true,
         destroy: true
@@ -132,6 +134,7 @@ async function cekSemuaDomain() {
         const domain = domains[i];
         const cells = rows[i].cells;
 
+        // Tampilkan CHECKING...
         for (let j = 2; j < cells.length; j++) {
             cells[j].innerHTML = "CHECKING...";
             cells[j].className = "status-waiting";
@@ -176,15 +179,28 @@ function tambahDomain() {
     const input = document.getElementById('newDomain');
     const val = input.value.trim().toLowerCase();
 
-    if (!val) return alert("Masukkan domain dulu!");
-    if (domains.includes(val)) return alert("Domain ini sudah ada!");
+    if (!val) {
+        alert("❌ Masukkan domain dulu!");
+        return;
+    }
+    if (domains.includes(val)) {
+        alert("❌ Domain ini sudah ada!");
+        return;
+    }
 
+    // Tambahkan domain ke array
     domains.push(val);
+
+    // Render ulang tabel
     renderTable();
-    initDataTable();           // ← Ini yang diperbaiki
-    
-    input.value = '';          // Kosongkan input
-    alert("Domain berhasil ditambahkan! ✅");
+
+    // Refresh DataTable
+    initDataTable();
+
+    // Kosongkan input
+    input.value = '';
+
+    alert(`✅ Domain "${val}" berhasil ditambahkan!`);
 }
 
 $(document).ready(function() {
