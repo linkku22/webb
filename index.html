@@ -19,7 +19,7 @@
         .table td { text-align: center; vertical-align: middle; padding: 12px; }
         .domain-link { color: #007bff; text-decoration: none; }
         .domain-link:hover { text-decoration: underline; }
-        .container { max-width: 1200px; }
+        .container { max-width: 1300px; }
     </style>
 </head>
 <body>
@@ -95,6 +95,8 @@ let domains = [
     "gobetasia-rtp.live"
 ];
 
+let table;   // Simpan instance DataTable
+
 function renderTable() {
     let html = '';
     domains.forEach((domain, i) => {
@@ -114,6 +116,15 @@ function renderTable() {
     document.getElementById('domainBody').innerHTML = html;
 }
 
+function initDataTable() {
+    if (table) table.destroy();
+    table = $('#domainTable').DataTable({
+        pageLength: 50,
+        ordering: true,
+        destroy: true
+    });
+}
+
 async function cekSemuaDomain() {
     const rows = document.getElementById('domainBody').rows;
     
@@ -121,14 +132,12 @@ async function cekSemuaDomain() {
         const domain = domains[i];
         const cells = rows[i].cells;
 
-        // Tampilkan sedang mengecek
         for (let j = 2; j < cells.length; j++) {
             cells[j].innerHTML = "CHECKING...";
             cells[j].className = "status-waiting";
         }
 
         try {
-            // Menggunakan CORS Proxy
             const proxy = "https://corsproxy.io/?";
             const apiURL = `https://indiwtf.com/api/check?domain=${encodeURIComponent(domain)}&token=${TOKEN}`;
             
@@ -145,10 +154,9 @@ async function cekSemuaDomain() {
                 statusText = "BLOCKED";
                 statusClass = "status-blocked";
             } else if (data.error) {
-                statusText = "ERROR: " + data.error;
+                statusText = "ERROR: " + (data.error || "Unknown");
             }
 
-            // Isi semua kolom ISP dengan hasil yang sama (karena API saat ini hanya 1 hasil)
             for (let j = 2; j < cells.length; j++) {
                 cells[j].innerHTML = statusText;
                 cells[j].className = statusClass;
@@ -157,7 +165,7 @@ async function cekSemuaDomain() {
         } catch (err) {
             console.error(err);
             for (let j = 2; j < cells.length; j++) {
-                cells[j].innerHTML = "ERROR KONEKSI";
+                cells[j].innerHTML = "ERROR";
                 cells[j].className = "status-error";
             }
         }
@@ -165,25 +173,23 @@ async function cekSemuaDomain() {
 }
 
 function tambahDomain() {
-    const val = document.getElementById('newDomain').value.trim().toLowerCase();
+    const input = document.getElementById('newDomain');
+    const val = input.value.trim().toLowerCase();
+
     if (!val) return alert("Masukkan domain dulu!");
-    if (domains.includes(val)) return alert("Domain sudah ada!");
-    
+    if (domains.includes(val)) return alert("Domain ini sudah ada!");
+
     domains.push(val);
     renderTable();
-    document.getElementById('newDomain').value = '';
+    initDataTable();           // ← Ini yang diperbaiki
     
-    // Refresh DataTable
-    $('#domainTable').DataTable().destroy();
-    $('#domainTable').DataTable({ pageLength: 50 });
+    input.value = '';          // Kosongkan input
+    alert("Domain berhasil ditambahkan! ✅");
 }
 
 $(document).ready(function() {
     renderTable();
-    $('#domainTable').DataTable({ 
-        pageLength: 50,
-        ordering: true
-    });
+    initDataTable();
 });
 </script>
 </body>
